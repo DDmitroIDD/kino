@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>KINO</title>
+</head>
+<body>
+    {% for message in messages %}
+        <p style="color: #f60606"> {{ message|safe }} </p>
+    {% endfor %}
+    <p><a style="color: black" href="{% url 'movie_list' %}">Home page</a></p>
+    {% if is_authenticated %}
+        <p><a href="{% url 'logout' %}">Logout</a> </p>
+        {% if not is_superuser %}
+            <P><a style="color: black" href="{% url 'tickets_list' %}">Your buying!</a> </P>
+        {% endif %}
+    {% endif %}
+    {% if is_anonymous %}
+        <a style="color: aquamarine" href="{% url 'register' %}">Registration</a>
+        <a style="color: burlywood" href="{% url 'login' %}">Login</a>
+    {% elif is_superuser %}
+        <p><a href="{% url 'cinema_create' %}">Cinema create</a></p>
+        <p><a href="{% url 'movie_create' %}">Movie create</a> </p>
+
+    {% endif %}
+    <div style="background-color: aqua">
+        {% block content %}
+            <form method="get" action="{% url 'movie_list' %}">
+                <input type="date" name="date_search" value="Search for date">
+                <input type="submit" value="Search for date">
+            </form>
+            <p><form method="get" action="{% url 'movie_list' %}">
+                    <input type="radio" name="order" value="price">Ordering by price<br>
+                    <input type="radio" name="order" value="-start_datetime">Ordering by start time<br>
+                    <input type="submit" value="Odering">
+                </form>
+            </p>
+            {% for movie in movies %}
+                <p style="color: brown; font-size: xx-large">{{ movie.movie }}</p>
+                <p>Hall: {{ movie.hall.hall_name }}</p>
+                <p>Seats left: {{ movie.qyt}}</p>
+                <p>Start session: {{ movie.start_datetime }}</p>
+                <p>End session: {{ movie.end_datetime }}</p>
+                <p>Price: {{ movie.price }}</p>
+                {% if is_superuser %}
+                    <form action="{% url 'movie_update' movie.pk %}" method="get">
+
+                        <input type="submit" value="Update movie">
+                    </form>
+                    <form action="{% url 'cinema_update' movie.hall_id %}" method="get">
+                        <input type="submit" value="Update hall">
+                    </form>
+                {% elif is_authenticated %}
+                    <form method="post" action="{% url 'ticket_create' %}">
+                        {% csrf_token %}
+                        {{ ticket_form }}
+                        <input type="hidden" name="movie" value="{{ movie.pk }}">
+                        <input type="submit" value="Buy ticket/s">
+
+                    </form>
+                {% endif %}
+            {% endfor %}
+            <div class="pagination">
+    <span class="step-links">
+        {% if page_obj.has_previous %}
+            <a href="?page=1">&laquo; first</a>
+            <a href="?page={{ page_obj.previous_page_number }}">previous</a>
+        {% endif %}
+
+        <span class="current">
+            Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}.
+        </span>
+
+        {% if page_obj.has_next %}
+            <a href="?page={{ page_obj.next_page_number }}">next</a>
+            <a href="?page={{ page_obj.paginator.num_pages }}">last &raquo;</a>
+        {% endif %}
+    </span>
+        </div>
+        {% endblock %}
+    </div>
+
+</body>
+</html>

@@ -1,0 +1,10 @@
+{% extends 'index.html' %}
+
+{% block content %}
+<div style="padding: 20px; background-color: fuchsia"> Movie </div>
+<form action="{% url 'movie_create' %}" method="post">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <input type="submit" value="Create movie">
+</form>
+{% endblock %}

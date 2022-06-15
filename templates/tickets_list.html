@@ -1,0 +1,13 @@
+{% extends 'index.html' %}
+
+{% block content %}
+<div style="padding: 20px; background-color: fuchsia"> Buying list!</div>
+    <p>Money spent: {{ request.user.money_spent }}</p>
+{% for object in object_list %}
+    <p style="background-color: #ff0059">Movie: {{ object.movie.movie }}</p>
+    <p>Start date and time: {{ object.movie.start_datetime }}</p>
+    <p>QT: {{ object.qt }}</p>
+    <p>Price: {{ object.movie.price }}</p>
+    <p>Sum: {% widthratio object.movie.price 1 object.qt %}</p>
+{% endfor %}
+{% endblock %}

@@ -1,0 +1,10 @@
+{% extends 'index.html' %}
+
+{% block content %}
+<div style="padding: 20px; background-color: fuchsia"> Extended template index!</div>
+<form method="post" action="{% url 'login' %}">
+    {% csrf_token %}
+    {{ form }}
+    <input type="submit" value="Login">
+</form>
+{% endblock %}
