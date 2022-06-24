@@ -1,16 +1,14 @@
-from datetime import timedelta, datetime
 
 from django.contrib import messages
 from django.contrib.auth import authenticate, login
 from django.contrib.auth.mixins import PermissionRequiredMixin
 from django.contrib.auth.views import LogoutView, LoginView
 from django.contrib.messages.views import SuccessMessageMixin
-from django.db.models import Q
-from django.shortcuts import render, redirect
-from django.urls import reverse_lazy
+from django.shortcuts import redirect
 from django.utils import timezone
 from django.views.generic import CreateView, ListView, UpdateView
 
+# from kino_app.creating_movie_sessions import creating
 from kino_app.forms import UserRegisterForm, TicketModelForm, CinemaModelForm, MovieSessionModelForm
 from kino_app.models import MovieSession, CinemaHall, Ticket
 
@@ -111,31 +109,34 @@ class MovieCreateView(PermissionRequiredMixin, CreateView):
             return redirect('/movie_create')
         return super(MovieCreateView, self).post(request, *args, **kwargs)
 
-    def form_valid(self, form):
-        object = form.save(commit=False)
-        object.qyt = object.hall.hall_size
-        start_date = form.cleaned_data.get('start_datetime')
-        end_date = form.cleaned_data.get('end_datetime')
-        time_range = datetime.combine(start_date.date(), end_date.time()) - \
-                     datetime.combine(start_date.date(), start_date.time())
-
-        day_range = end_date.date() - start_date.date()
-
-        dates = [(start_date + timedelta(days=day), start_date + timedelta(days=day, seconds=time_range.seconds))
-                 for day in range(day_range.days+1)]
-
-        for start, end in dates:
-            mov = MovieSession.objects.filter(hall_id=object.hall_id).filter(Q(
-                    start_datetime__range=(start, end)) | Q(end_datetime__range=(start, end)))
-            if mov:
-                messages.info(self.request, 'This time is taken!')
-                return redirect('/movie_create')
-
-        movies = (MovieSession(hall_id=object.hall_id, movie=object.movie, qyt=object.qyt, price=object.price,
-                               start_datetime=start, end_datetime=end) for start, end in dates)
-
-        MovieSession.objects.bulk_create(movies)
-        return redirect('/movie_create')
+    # def form_valid(self, form):
+        # object = form.save(commit=False)
+        # object.qyt = object.hall.hall_size
+        # try:
+        #     dates, hall_id = creating(form.cleaned_data)
+        # start_date = form.cleaned_data.get('start_datetime')
+        # end_date = form.cleaned_data.get('end_datetime')
+        # time_range = datetime.combine(start_date.date(), end_date.time()) - \
+        #              datetime.combine(start_date.date(), start_date.time())
+        #
+        # day_range = end_date.date() - start_date.date()
+        #
+        # dates = [(start_date + timedelta(days=day), start_date + timedelta(days=day, seconds=time_range.seconds))
+        #          for day in range(day_range.days+1)]
+        #
+        # for start, end in dates:
+        #     mov = MovieSession.objects.filter(hall_id=object.hall_id).filter(Q(
+        #             start_datetime__range=(start, end)) | Q(end_datetime__range=(start, end)))
+        #     if mov:
+        # except ValueError:
+        #     messages.info(self.request, 'This time is taken!')
+        #     return redirect('/movie_create')
+        #
+        # movies = (MovieSession(hall_id=hall_id, movie=object.movie, qyt=object.qyt, price=object.price,
+        #                        start_datetime=start, end_datetime=end) for start, end in dates)
+        #
+        # MovieSession.objects.bulk_create(movies)
+        # return redirect('/movie_create')
 
 
 class MovieUpdateView(UpdateView):

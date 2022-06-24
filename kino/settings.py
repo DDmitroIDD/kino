@@ -44,11 +44,11 @@ INSTALLED_APPS = [
     'ckeditor_uploader',
     'taggit',
     'taggit_serializer',
-    'rest_framework.authtoken',
+    # 'rest_framework.authtoken',
 
 ]
 
-MIDDLEWARE = {
+MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'corsheaders.middleware.CorsMiddleware',
@@ -57,7 +57,7 @@ MIDDLEWARE = {
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-}
+]
 
 ROOT_URLCONF = 'kino.urls'
 
@@ -174,6 +174,7 @@ REST_FRAMEWORK = {
     "DEFAULT_RENDERER_CLASSES": ["rest_framework.renderers.JSONRenderer"],
     "TEST_REQUEST_DEFAULT_FORMAT": "json",
     "DEFAULT_PERMISSION_CLASSES": ("rest_framework.permissions.DjangoModelPermissions",),
+    "SEARCH_PARAM": "q",
 }
 
 LOGIN_URL = "/api/v1/signin"
@@ -184,3 +185,11 @@ SIMPLE_JWT = {
 }
 
 CORS_ORIGIN_WHITELIST = ["http://localhost:3000", "http://127.0.0.1:3000"]
+
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_USE_TLS = True
+EMAIL_PORT = 587
+EMAIL_HOST_USER = 'dimakozhurin28@gmail.com'
+EMAIL_HOST_PASSWORD = 'qzmbximmfgxjvlvu'
+

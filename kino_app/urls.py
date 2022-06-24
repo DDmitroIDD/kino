@@ -1,7 +1,5 @@
 from django.urls import path
 
-from kino_app.api.authorization import CustomTokenAuthentication
-from kino_app.api.resources import CustomGetToken, ApiLogoutView
 from kino_app.views import MovieListView, SignUpView, LogInView, LogOutView, CinemaCreateView, CinemaUpdateView, \
     MovieCreateView, MovieUpdateView, TicketCreateView, TicketsListView
 
