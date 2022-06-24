@@ -31,23 +31,32 @@ class CustomerSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Customer
-        fields = ("id", "username", "password", "password2", "money_spent")
+        fields = ("id", "username", "password", "password2", "money_spent", "is_staff", )
         read_only_fields = ("id", "money_spent", "is_staff",)
 
 
 class MovieSessionSerializer(serializers.ModelSerializer):
     tag = TagListSerializerField(required=True)
-    show_hall = serializers.SlugRelatedField(slug_field="hall_name", queryset=CinemaHall.objects.all())
+    hall = serializers.SlugRelatedField(slug_field="hall_name", queryset=CinemaHall.objects.all())
+    start_datetime = serializers.DateTimeField(required=True)
+    end_datetime = serializers.DateTimeField(required=True)
 
     class Meta:
         model = MovieSession
         fields = ("id", "hall", "movie", "qyt", "start_datetime", "end_datetime", "price",
                   "tag", "image", "slug", "description", )
-        read_only_fields = ("id", )
+        read_only_fields = ("id", "qyt", )
         lookup_field = "slug"
         extra_kwargs = {
             "url": {"lookup_field": "slug"}
         }
+
+    def validate(self, attrs):
+        start_datetime = attrs.get('start_datetime', False)
+        end_datetime = attrs.get('end_datetime', False)
+        if start_datetime > end_datetime:
+            raise serializers.ValidationError({'datetime_error': 'Your start time starting after end time!'})
+        return attrs
 
 
 class CinemaHallSerializer(serializers.ModelSerializer):
@@ -73,11 +82,18 @@ class CinemaHallSerializer(serializers.ModelSerializer):
 
 
 class TicketSerializer(serializers.ModelSerializer):
+    qnt = serializers.IntegerField(required=True)
+    spent = serializers.SerializerMethodField()
+    user = serializers.SlugRelatedField(slug_field="username", queryset=Customer.objects.all())
 
     class Meta:
         model = Ticket
-        fields = ("id", "customer", "movie", "qt")
-        read_only_fields = ("id", )
+        fields = ("id", "customer", "movie", "qt", "spent")
+        read_only_fields = ("id", "spent", "user", )
+        lookup_field = 'slug'
+        extra_kwargs = {
+            'url': {'lookup_field': 'slug'}
+        }
 
 
 class ContactSerailizer(serializers.Serializer):
