@@ -19,7 +19,7 @@ class Customer(AbstractUser):
 
 
 class CinemaHall(models.Model):
-    hall_name = models.CharField(max_length=100)
+    hall_name = models.CharField(max_length=100, unique=True)
     hall_size = models.PositiveSmallIntegerField()
 
     def __str__(self):
