@@ -4,8 +4,6 @@ from datetime import datetime, timedelta
 from django.core.exceptions import ValidationError
 from django.db.models import Q
 
-# from kino_app.models import MovieSession
-
 
 def create_dates(data, hall):
     start_date = data.get('start_datetime', False)
