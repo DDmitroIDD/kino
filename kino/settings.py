@@ -44,7 +44,6 @@ INSTALLED_APPS = [
     'ckeditor_uploader',
     'taggit',
     'taggit_serializer',
-    # 'rest_framework.authtoken',
 
 ]
 

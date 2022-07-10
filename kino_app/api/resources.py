@@ -1,12 +1,14 @@
 import json
+from datetime import datetime
 
 import taggit
+from django.core.exceptions import MultipleObjectsReturned
 from django.core.mail import send_mail
 from django.utils import timezone
 # from rest_framework import serializers
-from rest_framework import serializers
+from rest_framework import serializers, status
 from rest_framework.authtoken.models import Token
-from rest_framework.exceptions import NotAcceptable
+from rest_framework.exceptions import NotAcceptable, ValidationError
 from rest_framework.generics import GenericAPIView, ListAPIView
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import IsAdminUser, AllowAny, IsAuthenticated
@@ -18,6 +20,7 @@ from taggit.models import Tag
 from kino_app.api.serializers import CustomerSerializer, CinemaHallSerializer, MovieSessionSerializer, TicketSerializer, \
     ContactSerailizer, TagSerializer
 # from kino_app.creating_movie_sessions import creating
+from kino_app.creating_movie_sessions import create_dates
 from kino_app.models import Customer, CinemaHall, MovieSession, Ticket
 from kino_app.api.permissions import IsAnonymousUser, IsAuthNotAdmin
 
@@ -26,7 +29,7 @@ class ProfileView(GenericAPIView):
     permission_classes = [IsAuthenticated]
     serializer_class = CustomerSerializer
 
-    def get(self, request, *args,  **kwargs):
+    def get(self, request, *args, **kwargs):
         return Response({
             "user": CustomerSerializer(request.user, context=self.get_serializer_context()).data,
         })
@@ -40,7 +43,7 @@ class CustomerModelViewSet(ModelViewSet):
 
     def get_permissions(self):
         if self.request.method == 'POST':
-            self.permission_classes = (AllowAny, )
+            self.permission_classes = (AllowAny,)
         return super().get_permissions()
 
     def get_serializer_context(self):
@@ -68,27 +71,27 @@ class CustomerModelViewSet(ModelViewSet):
 #                          })
 
 
-class ApiLogoutView(APIView):
-    def post(self, request, *args, **kwargs):
-        token: Token = request.auth
-        token.delete()
-        return Response()
+# class ApiLogoutView(APIView):
+#     def post(self, request, *args, **kwargs):
+#         token: Token = request.auth
+#         token.delete()
+#         return Response()
 
 
 class CustomPagination(PageNumberPagination):
     page_size = 8
-    page_query_param = 'page_size'
+    page_size_query_param = 'page_size'
     max_page_size = 10
 
 
 class CinemaHallModelViewSet(ModelViewSet):
     queryset = CinemaHall.objects.all()
     serializer_class = CinemaHallSerializer
-    permission_classes = (IsAdminUser, )
+    permission_classes = (IsAdminUser,)
 
     def get_permissions(self):
         if self.request.method == 'GET':
-            self.permission_classes = (AllowAny, )
+            self.permission_classes = (AllowAny,)
         return super(CinemaHallModelViewSet, self).get_permissions()
 
     def perform_update(self, serializer):
@@ -100,15 +103,17 @@ class CinemaHallModelViewSet(ModelViewSet):
 
 
 class MovieSessionModelViewSet(ModelViewSet):
-    queryset = MovieSession.objects.filter(end_datetime__gte=timezone.now()) 
-    permission_classes = (IsAdminUser, )
+    queryset = MovieSession.objects.filter(end_datetime__gte=timezone.now())
+    permission_classes = (IsAdminUser,)
     serializer_class = MovieSessionSerializer
     pagination_class = CustomPagination
     order_by = ['-start_datetime']
+    lookup_field = 'id'
+    search_fields = ["movie"]
 
     def get_permissions(self):
         if self.request.method == 'GET':
-            self.permission_classes = (AllowAny, )
+            self.permission_classes = (AllowAny,)
         return super(MovieSessionModelViewSet, self).get_permissions()
 
     def create(self, request, *args, **kwargs):
@@ -116,42 +121,75 @@ class MovieSessionModelViewSet(ModelViewSet):
         if data_from_postman := self.request.data.pop('str_data', False):
             json_data = json.loads(*data_from_postman)
             self.request.data.update(json_data)
-
         return super(MovieSessionModelViewSet, self).create(request, *args, **kwargs)
-    
+
     def perform_update(self, serializer):
-        serializer.save(kwargs={'data': serializer.validated_data})
+        data = serializer.validated_data
+        serializer.save()
+    #     try:
+    #         datas = []
+    #         hall_name = request.data.get('hall')
+    #         hall = MovieSession.objects.filter(hall__hall_name=hall_name)
+    #         dates = create_dates(request.data, hall)
+    #     except ValidationError:
+    #         raise serializers.ValidationError({'movie_sessions_error': 'There is movie no this time in this hall!'})
+    #
+    #     start, end = dates.pop(0)
+    #     request.data['start_datetime'] = datetime.strftime(start, '%Y-%m-%dT%H:%M')
+    #     request.data['end_datetime'] = datetime.strftime(end, '%Y-%m-%dT%H:%M')
+    #     serializer = self.get_serializer(data=request.data)
+    #     serializer.is_valid(raise_exception=True)
+    #     self.perform_create(serializer)
+    #     headers = self.get_success_headers(serializer.data)
+    #     return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+
+    # def perform_update(self, serializer):
+    #     serializer.save(kwargs={'data': serializer.validated_data})
+
+    # def dispatch(self, request, *args, **kwargs):
+    #     a = 1
+    #     return super(MovieSessionModelViewSet, self).dispatch(request, *args, **kwargs)
 
     # def perform_create(self, serializer):
     #
     #     try:
-    #         dates, hall_id = creating(serializer.validated_data)
+    #         hall_id = serializer.validated_data.get('hall').id
+    #         hall = MovieSession.objects.filter(hall_id=hall_id)
+    #         dates = create_dates(serializer.validated_data, hall)
     #     except ValueError:
     #         raise serializers.ValidationError({'movie_sessions_error': 'There is movie no this time in this hall!'})
-    #
-    #     data = serializer.validated_data
-    #     movie = data.get('movie', False)
-    #     price = data.get('price', False)
-    #     qyt = data.get('hall', False).hall_size
-    #     slug = '_'.join(movie.split())
-    #     description = data.get('description', False)
-    #     tags = data.grt('tag', False)
-    #
-    #     movies = (MovieSession(hall_id=hall_id, movie=movie, qyt=qyt, price=price,
-    #                            start_datetime=start, end_datetime=end, slug=slug,
-    #                            description=description, tag=tags) for start, end in dates)
-    #
-    #     MovieSession.objects.bulk_create(movies)
+
+        # data = serializer.validated_data
+        # movie = data.get('movie', False)
+        # price = data.get('price', False)
+        # qyt = data.get('hall', False).hall_size
+        # slug = '_'.join(movie.split())
+        # description = data.get('description', False)
+        # tags = data.get('tag', False)
+
+        # for start, end in dates:
+        #     serializer.validated_data['start_datetime'] = start
+        #     serializer.validated_data['end_datetime'] = end
+        #     serializer.save()
+        #     # movie = MovieSession(hall_id=hall_id, movie=movie, qyt=qyt, price=price,
+        #     #                      start_datetime=start, end_datetime=end, slug=slug,
+        #     #                      description=description)
+
+        # movies = (MovieSession(hall_id=hall_id, movie=movie, qyt=qyt, price=price,
+        #                        start_datetime=start, end_datetime=end, slug=slug,
+        #                        description=description, tag=tags) for start, end in dates)
+        #
+        # MovieSession.objects.bulk_create(movies)
 
 
 class TicketModelViewSet(ModelViewSet):
     queryset = Ticket.objects.all()
     serializer_class = TicketSerializer
-    permission_classes = (IsAuthenticated, )
+    permission_classes = (IsAuthenticated,)
 
     def get_permissions(self):
         if self.request.method == 'POST':
-            self.permission_classes = (IsAuthNotAdmin, )
+            self.permission_classes = (IsAuthNotAdmin,)
         return super(TicketModelViewSet, self).get_permissions()
 
     def get_queryset(self):
@@ -178,7 +216,7 @@ class TicketModelViewSet(ModelViewSet):
 
 
 class TagDetailView(ListAPIView):
-    queryset = MovieSession.objects.all()
+    queryset = MovieSession.objects.filter(end_datetime__gte=timezone.now())
     serializer_class = MovieSessionSerializer
     pagination_class = CustomPagination
     permission_classes = [AllowAny]
@@ -216,6 +254,6 @@ class FeedBackView(APIView):
 
 
 class LastFiveMoviesView(ListAPIView):
-    queryset = MovieSession.objects.all().order_by('-id')[:5]
+    queryset = MovieSession.objects.filter(end_datetime__gte=timezone.now()).order_by('-id')[:5]
     serializer_class = MovieSessionSerializer
     permission_classes = [AllowAny]

@@ -12,7 +12,7 @@ from kino_app.creating_movie_sessions import create_dates
 
 class Customer(AbstractUser):
     money_spent = models.PositiveIntegerField(default=0)
-    avatar = models.ImageField(default='/static/421-4212341_default-avatar-svg-hd-png-download.png')
+    avatar = models.ImageField(default='static/avatar.png', upload_to='avatar/')
 
     def __str__(self):
         return f'Username: {self.username}\nMoney spent: {self.money_spent}'
@@ -23,7 +23,7 @@ class CinemaHall(models.Model):
     hall_size = models.PositiveSmallIntegerField()
 
     def __str__(self):
-        return f'Hall: {self.hall_name}\nSize: {self.hall_size}'
+        return f'Hall: {self.hall_name}\nSize: {self.hall_size}\nid: {self.id}'
 
 
 class MovieSession(models.Model):
@@ -42,46 +42,55 @@ class MovieSession(models.Model):
         ordering = ["start_datetime"]
 
     def __str__(self):
-        return f'Hall: {self.hall.hall_name}\nMovie: {self.movie}\nPrice: {self.price} image: {self.image}'
+        return f'Hall: {self.hall.hall_name}\nMovie: {self.movie}\nPrice: {self.price} image: {self.image} id: {self.id}'
 
     def save(self, **kwargs):
-        self.slug = '_'.join(self.movie.split())
+
         if not self.id:
             self.qyt = self.hall.hall_size
+            self.slug = self.movie.replace(' ', '_')
+            return super(MovieSession, self).save(**kwargs)
 
-            try:
-                hall = MovieSession.objects.filter(hall_id=self.hall.id)
-                dates = create_dates(self, hall)
-            except ValidationError:
-                raise ValidationError({'movie_sessions_error': 'There is movie no this time in this hall!'})
-
-            movies = (MovieSession(hall_id=self.hall.id, movie=self.movie, qyt=self.qyt, price=self.price,
-                                   start_datetime=start, end_datetime=end, slug=self.slug,
-                                   description=self.description, tag=self.tag, image=self.image)
-                      for start, end in dates)
-
-            return MovieSession.objects.bulk_create(movies)
-        elif self.id:
-            if tickets := Ticket.objects.filter(movie_id=self.id):
-                raise ValidationError({'movie_sessions_error': 'There is tickets no this session. '
-                                                               'You can`t changing this movie!'})
-            sessions = MovieSession.objects.filter(movie=self.movie)
-            mov_for_upd = []
-            for session in sessions:
-                if tickets := Ticket.objects.filter(movie_id=session.id):
-                    continue
-                session.movie = self.movie
-                session.qyt = self.qyt
-                session.image = self.image
-                session.description = self.description
-                session.slug = self.slug
-                session.price = self.price
-                # session.tag = self.tag
-                mov_for_upd.append(session)
-            return MovieSession.objects.bulk_update(mov_for_upd, ["movie", "qyt", "image", "description",
-                                                                  "slug", "price"])
-
-        return super(MovieSession, self).save(**kwargs)
+        #     try:
+        #         hall = MovieSession.objects.filter(hall_id=self.hall.id)
+        #         dates = create_dates(self, hall)
+        #     except ValidationError:
+        #         raise ValidationError({'movie_sessions_error': 'There is movie no this time in this hall!'})
+        #     for start, end in dates:
+        #         movie = MovieSession(hall_id=self.hall.id, movie=self.movie, qyt=self.qyt, price=self.price,
+        #                              start_datetime=start, end_datetime=end, slug=self.slug,
+        #                              description=self.description, image=self.image)
+        #         tags = (movie.tag.add(t) for t in self.tag)
+        #         movie.save()
+        #     # movies = (MovieSession(hall_id=self.hall.id, movie=self.movie, qyt=self.qyt, price=self.price,
+        #     #                        start_datetime=start, end_datetime=end, slug=self.slug,
+        #     #                        description=self.description, image=self.image)
+        #     #           for start, end in dates)
+        #     # new_movies = MovieSession.objects.bulk_create(movies)
+        #     # unpack = [new_movies]
+        #     #
+        #     # return new_movies
+        # elif self.id:
+        #     if tickets := Ticket.objects.filter(movie_id=self.id):
+        #         raise ValidationError({'movie_sessions_error': 'There is tickets no this session. '
+        #                                                        'You can`t changing this movie!'})
+        #     sessions = MovieSession.objects.filter(movie=self.movie)
+        #     mov_for_upd = []
+        #     for session in sessions:
+        #         if tickets := Ticket.objects.filter(movie_id=session.id):
+        #             continue
+        #         session.movie = self.movie
+        #         session.qyt = self.qyt
+        #         session.image = self.image
+        #         session.description = self.description
+        #         session.slug = self.slug
+        #         session.price = self.price
+        #         session.tag.add(self.tag)
+        #         mov_for_upd.append(session)
+        #     return MovieSession.objects.bulk_update(mov_for_upd, ["movie", "qyt", "image", "description",
+        #                                                           "slug", "price"])
+        #
+        # return super(MovieSession, self).save(**kwargs)
 
 
 class Ticket(models.Model):
