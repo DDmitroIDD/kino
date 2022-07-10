@@ -1,12 +1,12 @@
 from rest_framework import serializers
 from taggit.models import Tag
-from taggit_serializer.serializers import TagListSerializerField
+from taggit.serializers import TaggitSerializer, TagListSerializerField
 
+from kino_app.creating_movie_sessions import create_dates
 from kino_app.models import Customer, CinemaHall, MovieSession, Ticket
 
 
 class CustomerSerializer(serializers.ModelSerializer):
-
     password = serializers.CharField(
         required=True,
         write_only=True,
@@ -31,12 +31,27 @@ class CustomerSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Customer
-        fields = ("id", "username", "password", "password2", "money_spent", "is_staff", )
+        fields = ("id", "username", "password", "password2", "money_spent", "is_staff", "avatar")
         read_only_fields = ("id", "money_spent", "is_staff",)
 
 
-class MovieSessionSerializer(serializers.ModelSerializer):
-    tag = TagListSerializerField(required=True)
+class TicketSerializer(serializers.ModelSerializer):
+    qnt = serializers.IntegerField(required=True)
+    spent = serializers.SerializerMethodField()
+    user = serializers.SlugRelatedField(slug_field="username", queryset=Customer.objects.all())
+
+    class Meta:
+        model = Ticket
+        fields = ("id", "customer", "movie", "qt", "spent")
+        read_only_fields = ("id", "spent", "user",)
+        lookup_field = 'slug'
+        extra_kwargs = {
+            'url': {'lookup_field': 'slug'}
+        }
+
+
+class MovieSessionSerializer(TaggitSerializer, serializers.ModelSerializer):
+    tag = TagListSerializerField()
     hall = serializers.SlugRelatedField(slug_field="hall_name", queryset=CinemaHall.objects.all())
     start_datetime = serializers.DateTimeField(required=True)
     end_datetime = serializers.DateTimeField(required=True)
@@ -44,8 +59,8 @@ class MovieSessionSerializer(serializers.ModelSerializer):
     class Meta:
         model = MovieSession
         fields = ("id", "hall", "movie", "qyt", "start_datetime", "end_datetime", "price",
-                  "tag", "image", "slug", "description", )
-        read_only_fields = ("id", "qyt", )
+                  "tag", "image", "slug", "description",)
+        read_only_fields = ("id", "qyt",)
         lookup_field = "slug"
         extra_kwargs = {
             "url": {"lookup_field": "slug"}
@@ -54,8 +69,31 @@ class MovieSessionSerializer(serializers.ModelSerializer):
     def validate(self, attrs):
         start_datetime = attrs.get('start_datetime', False)
         end_datetime = attrs.get('end_datetime', False)
-        if start_datetime > end_datetime:
-            raise serializers.ValidationError({'datetime_error': 'Your start time starting after end time!'})
+        if not self.instance:
+            if start_datetime > end_datetime:
+                raise serializers.ValidationError({'datetime_error': 'Your start time starting after end time!'})
+            try:
+                hall = attrs.get('hall')
+                hall = MovieSession.objects.filter(hall=hall)
+                dates = create_dates(attrs, hall)
+            except serializers.ValidationError:
+                raise serializers.ValidationError({'movie_sessions_error': 'There is movie no this time in this hall!'})
+            start, end = dates.pop(0)
+            attrs['start_datetime'] = start
+            attrs['end_datetime'] = end
+            slug = attrs.get('movie').replace(' ', '_')
+            movies = (
+            MovieSession(hall_id=attrs.get('hall').id, movie=attrs.get('movie'), qyt=attrs.get('hall').hall_size,
+                         price=attrs.get('price'), slug=slug,
+                         start_datetime=start, end_datetime=end,
+                         description=attrs.get('description'), image=attrs.get('image'))
+                        for start, end in dates)
+            new_movies = MovieSession.objects.bulk_create(movies)
+            tags = attrs.get('tag')
+            for movie in new_movies:
+                for t in tags:
+                    movie.tag.add(t)
+
         return attrs
 
 
@@ -81,21 +119,6 @@ class CinemaHallSerializer(serializers.ModelSerializer):
     #     return attrs
 
 
-class TicketSerializer(serializers.ModelSerializer):
-    qnt = serializers.IntegerField(required=True)
-    spent = serializers.SerializerMethodField()
-    user = serializers.SlugRelatedField(slug_field="username", queryset=Customer.objects.all())
-
-    class Meta:
-        model = Ticket
-        fields = ("id", "customer", "movie", "qt", "spent")
-        read_only_fields = ("id", "spent", "user", )
-        lookup_field = 'slug'
-        extra_kwargs = {
-            'url': {'lookup_field': 'slug'}
-        }
-
-
 class ContactSerailizer(serializers.Serializer):
     name = serializers.CharField()
     email = serializers.EmailField()
@@ -104,10 +127,9 @@ class ContactSerailizer(serializers.Serializer):
 
 
 class TagSerializer(MovieSessionSerializer):
-
     class Meta:
         model = Tag
-        fields = ("name", )
+        fields = ("name",)
         lookup_field = "name"
         extra_kwargs = {
             "url": {"lookup_field": "name"}

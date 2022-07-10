@@ -2,7 +2,7 @@ from django.urls import path
 from rest_framework import routers
 
 from kino_app.api.resources import CustomerModelViewSet, CinemaHallModelViewSet, MovieSessionModelViewSet, \
-    ApiLogoutView, ProfileView, TagView, LastFiveMoviesView, TagDetailView
+     ProfileView, TagView, LastFiveMoviesView, TagDetailView
 
 router = routers.SimpleRouter()
 router.register(r'registration', CustomerModelViewSet)
@@ -16,7 +16,7 @@ urlpatterns = [
     path("profile/", ProfileView.as_view()),
     path("last_five/", LastFiveMoviesView.as_view()),
     # path('api-token-auth/', CustomGetToken.as_view(), name='get_token'),
-    path('logout/', ApiLogoutView.as_view(), name='api_logout'),
+    # path('logout/', ApiLogoutView.as_view(), name='api_logout'),
 ]
 
 urlpatterns += router.urls
