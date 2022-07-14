@@ -48,6 +48,7 @@ class MovieSession(models.Model):
             self.qyt = self.hall.hall_size
             self.slug = self.movie.replace(' ', '_')
             return super(MovieSession, self).save(**kwargs)
+        return super(MovieSession, self).save(**kwargs)
 
         #     try:
         #         hall = MovieSession.objects.filter(hall_id=self.hall.id)

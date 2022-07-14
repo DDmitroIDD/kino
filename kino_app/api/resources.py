@@ -6,7 +6,7 @@ from django.core.exceptions import MultipleObjectsReturned
 from django.core.mail import send_mail
 from django.utils import timezone
 # from rest_framework import serializers
-from rest_framework import serializers, status
+from rest_framework import serializers, status, filters
 from rest_framework.authtoken.models import Token
 from rest_framework.exceptions import NotAcceptable, ValidationError
 from rest_framework.generics import GenericAPIView, ListAPIView
@@ -107,6 +107,7 @@ class MovieSessionModelViewSet(ModelViewSet):
     permission_classes = (IsAdminUser,)
     serializer_class = MovieSessionSerializer
     pagination_class = CustomPagination
+    filter_backends = (filters.SearchFilter,)
     order_by = ['-start_datetime']
     lookup_field = 'id'
     search_fields = ["movie"]
@@ -201,25 +202,23 @@ class TicketModelViewSet(ModelViewSet):
 
     def perform_create(self, serializer):
         data = serializer.validated_data
-        movie = MovieSession.objects.get(id=data['movie'].id)
-        user = Customer.objects.get(id=self.request.user.id)
-        qnt = data['qt']
-        if (movie.free_seats - qnt) < 0:
+        movie = data.get('movie')
+        user = data.get('customer')
+        qt = data.get('qt')
+        if (movie.qyt - qt) < 0:
             raise serializers.ValidationError({'qnt': 'Not enough free seats!'})
-        movie.free_seats -= qnt
-        user.spent += qnt * movie.price
+        movie.qyt -= qt
+        user.money_spent += qt * movie.price
         movie.save()
         user.save()
-        data['customer'] = user
-        serializer.validated_data = data
         serializer.save()
 
 
 class TagDetailView(ListAPIView):
     queryset = MovieSession.objects.filter(end_datetime__gte=timezone.now())
     serializer_class = MovieSessionSerializer
-    pagination_class = CustomPagination
     permission_classes = [AllowAny]
+    pagination_class = CustomPagination
 
     def get_queryset(self):
         try:
@@ -234,6 +233,8 @@ class TagView(ListAPIView):
     queryset = Tag.objects.all()
     serializer_class = TagSerializer
     permission_classes = [AllowAny]
+    # pagination_class = CustomPagination
+
 
 
 class FeedBackView(APIView):
@@ -254,6 +255,6 @@ class FeedBackView(APIView):
 
 
 class LastFiveMoviesView(ListAPIView):
-    queryset = MovieSession.objects.filter(end_datetime__gte=timezone.now()).order_by('-id')[:5]
+    queryset = MovieSession.objects.filter(end_datetime__gte=timezone.now()).order_by('slug').distinct('slug')[:5]
     serializer_class = MovieSessionSerializer
     permission_classes = [AllowAny]
