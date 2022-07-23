@@ -102,6 +102,21 @@ class CinemaHallModelViewSet(ModelViewSet):
         serializer.save()
 
 
+class MovieForUpdateView(ListAPIView):
+    queryset = MovieSession.objects.filter(end_datetime__gte=timezone.now())
+    permission_classes = (IsAdminUser, )
+    serializer_class = MovieSessionSerializer
+    pagination_class = CustomPagination
+    lookup_field = 'slug'
+
+    def get_queryset(self):
+        queryset = super(MovieForUpdateView, self).get_queryset()
+        slug = self.kwargs.get('slug', False)
+        queryset = queryset.filter(slug=slug)
+        qyt = queryset[0].hall.hall_size
+        return queryset.filter(qyt=qyt)
+
+
 class MovieSessionModelViewSet(ModelViewSet):
     queryset = MovieSession.objects.filter(end_datetime__gte=timezone.now())
     permission_classes = (IsAdminUser,)
@@ -124,9 +139,7 @@ class MovieSessionModelViewSet(ModelViewSet):
             self.request.data.update(json_data)
         return super(MovieSessionModelViewSet, self).create(request, *args, **kwargs)
 
-    def perform_update(self, serializer):
-        data = serializer.validated_data
-        serializer.save()
+
     #     try:
     #         datas = []
     #         hall_name = request.data.get('hall')
