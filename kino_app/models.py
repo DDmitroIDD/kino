@@ -1,13 +1,10 @@
 from django.contrib.auth.models import AbstractUser
-from django.core.exceptions import ValidationError
 from django.db import models
 from taggit.managers import TaggableManager
 from ckeditor_uploader.fields import RichTextUploadingField
 
 # Create your models here.
 from django.utils import timezone
-
-from kino_app.creating_movie_sessions import create_dates
 
 
 class Customer(AbstractUser):
@@ -42,7 +39,8 @@ class MovieSession(models.Model):
         ordering = ["start_datetime"]
 
     def __str__(self):
-        return f'Hall: {self.hall.hall_name}\nMovie: {self.movie}\nPrice: {self.price} image: {self.image} id: {self.id}'
+        return f'Hall: {self.hall.hall_name}\n' \
+               f'Movie: {self.movie}\nPrice: {self.price} image: {self.image} id: {self.id}'
 
     def save(self, **kwargs):
 
@@ -50,6 +48,7 @@ class MovieSession(models.Model):
             self.qyt = self.hall.hall_size
             self.slug = self.movie.replace(' ', '_')
             return super(MovieSession, self).save(**kwargs)
+        return super(MovieSession, self).save(**kwargs)
 
         #     try:
         #         hall = MovieSession.objects.filter(hall_id=self.hall.id)
