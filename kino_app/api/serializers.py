@@ -78,8 +78,8 @@ class MovieSessionSerializer(TaggitSerializer, serializers.ModelSerializer):
                 raise serializers.ValidationError({'datetime_error': 'Your start time starting after end time!'})
             try:
                 hall = attrs.get('hall')
-                hall = MovieSession.objects.filter(hall=hall)
-                dates = create_dates(attrs, hall)
+                sessions_in_hall = MovieSession.objects.filter(hall=hall)
+                dates = create_dates(attrs, sessions_in_hall)
             except serializers.ValidationError:
                 raise serializers.ValidationError({'movie_sessions_error': 'There is movie no this time in this hall!'})
             start, end = dates.pop(0)

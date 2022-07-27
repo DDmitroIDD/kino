@@ -4,6 +4,7 @@ from datetime import datetime
 import taggit
 from django.core.exceptions import MultipleObjectsReturned
 from django.core.mail import send_mail
+from django.db.models import Q
 from django.utils import timezone
 # from rest_framework import serializers
 from rest_framework import serializers, status, filters
@@ -104,7 +105,7 @@ class CinemaHallModelViewSet(ModelViewSet):
 
 class MovieForUpdateView(ListAPIView):
     queryset = MovieSession.objects.filter(end_datetime__gte=timezone.now())
-    permission_classes = (IsAdminUser, )
+    permission_classes = (IsAdminUser,)
     serializer_class = MovieSessionSerializer
     pagination_class = CustomPagination
     lookup_field = 'slug'
@@ -139,6 +140,25 @@ class MovieSessionModelViewSet(ModelViewSet):
             self.request.data.update(json_data)
         return super(MovieSessionModelViewSet, self).create(request, *args, **kwargs)
 
+    # def update(self, request, *args, **kwargs):
+    #     movie =
+    #     return super().update(request, *args, **kwargs)
+
+    def get_serializer(self, *args, **kwargs):
+        if kwargs.get('partial', False):
+            movie = args[0]
+            hall = movie.hall
+            if movie.qyt != hall.hall_size:
+                raise serializers.ValidationError("You can\'t change this movie "
+                                                  "because there are tickets at this movie")
+            movies_in_this_hall = MovieSession.objects.filter(hall=hall).exclude(id=movie.id)
+            start = kwargs['data'].get('start_datetime', False)
+            end = kwargs['data'].get('end_datetime', False)
+            if movies_in_this_hall.filter(Q(
+                    start_datetime__range=(start, end)) | Q(end_datetime__range=(start, end)) |
+                                          Q(start_datetime__lte=start, end_datetime__gte=end)):
+                raise serializers.ValidationError("There is movie no this time in this hall!")
+        return super(MovieSessionModelViewSet, self).get_serializer(*args, **kwargs)
 
     #     try:
     #         datas = []
@@ -157,13 +177,6 @@ class MovieSessionModelViewSet(ModelViewSet):
     #     headers = self.get_success_headers(serializer.data)
     #     return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
 
-    # def perform_update(self, serializer):
-    #     serializer.save(kwargs={'data': serializer.validated_data})
-
-    # def dispatch(self, request, *args, **kwargs):
-    #     a = 1
-    #     return super(MovieSessionModelViewSet, self).dispatch(request, *args, **kwargs)
-
     # def perform_create(self, serializer):
     #
     #     try:
@@ -173,27 +186,27 @@ class MovieSessionModelViewSet(ModelViewSet):
     #     except ValueError:
     #         raise serializers.ValidationError({'movie_sessions_error': 'There is movie no this time in this hall!'})
 
-        # data = serializer.validated_data
-        # movie = data.get('movie', False)
-        # price = data.get('price', False)
-        # qyt = data.get('hall', False).hall_size
-        # slug = '_'.join(movie.split())
-        # description = data.get('description', False)
-        # tags = data.get('tag', False)
+    # data = serializer.validated_data
+    # movie = data.get('movie', False)
+    # price = data.get('price', False)
+    # qyt = data.get('hall', False).hall_size
+    # slug = '_'.join(movie.split())
+    # description = data.get('description', False)
+    # tags = data.get('tag', False)
 
-        # for start, end in dates:
-        #     serializer.validated_data['start_datetime'] = start
-        #     serializer.validated_data['end_datetime'] = end
-        #     serializer.save()
-        #     # movie = MovieSession(hall_id=hall_id, movie=movie, qyt=qyt, price=price,
-        #     #                      start_datetime=start, end_datetime=end, slug=slug,
-        #     #                      description=description)
+    # for start, end in dates:
+    #     serializer.validated_data['start_datetime'] = start
+    #     serializer.validated_data['end_datetime'] = end
+    #     serializer.save()
+    #     # movie = MovieSession(hall_id=hall_id, movie=movie, qyt=qyt, price=price,
+    #     #                      start_datetime=start, end_datetime=end, slug=slug,
+    #     #                      description=description)
 
-        # movies = (MovieSession(hall_id=hall_id, movie=movie, qyt=qyt, price=price,
-        #                        start_datetime=start, end_datetime=end, slug=slug,
-        #                        description=description, tag=tags) for start, end in dates)
-        #
-        # MovieSession.objects.bulk_create(movies)
+    # movies = (MovieSession(hall_id=hall_id, movie=movie, qyt=qyt, price=price,
+    #                        start_datetime=start, end_datetime=end, slug=slug,
+    #                        description=description, tag=tags) for start, end in dates)
+    #
+    # MovieSession.objects.bulk_create(movies)
 
 
 class TicketModelViewSet(ModelViewSet):
@@ -247,7 +260,6 @@ class TagView(ListAPIView):
     serializer_class = TagSerializer
     permission_classes = [AllowAny]
     # pagination_class = CustomPagination
-
 
 
 class FeedBackView(APIView):
