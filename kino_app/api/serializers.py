@@ -36,18 +36,22 @@ class CustomerSerializer(serializers.ModelSerializer):
 
 
 class TicketSerializer(serializers.ModelSerializer):
-    qnt = serializers.IntegerField(required=True)
+    qt = serializers.IntegerField(required=True)
     spent = serializers.SerializerMethodField()
-    user = serializers.SlugRelatedField(slug_field="username", queryset=Customer.objects.all())
+    user = serializers.SlugRelatedField(slug_field="username", queryset=Customer.objects.all(), required=False)
 
     class Meta:
         model = Ticket
-        fields = ("id", "customer", "movie", "qt", "spent")
+        fields = ("id", "customer", "movie", "qt", "spent", "user")
         read_only_fields = ("id", "spent", "user",)
         lookup_field = 'slug'
         extra_kwargs = {
             'url': {'lookup_field': 'slug'}
         }
+
+    @staticmethod
+    def get_spent(obj):
+        return obj.customer.money_spent
 
 
 class MovieSessionSerializer(TaggitSerializer, serializers.ModelSerializer):
@@ -59,8 +63,8 @@ class MovieSessionSerializer(TaggitSerializer, serializers.ModelSerializer):
     class Meta:
         model = MovieSession
         fields = ("id", "hall", "movie", "qyt", "start_datetime", "end_datetime", "price",
-                  "tag", "image", "slug", "description",)
-        read_only_fields = ("id", "qyt",)
+                  "tag", "image", "slug", "description", )
+        read_only_fields = ("id", "qyt", )
         lookup_field = "slug"
         extra_kwargs = {
             "url": {"lookup_field": "slug"}
@@ -74,8 +78,8 @@ class MovieSessionSerializer(TaggitSerializer, serializers.ModelSerializer):
                 raise serializers.ValidationError({'datetime_error': 'Your start time starting after end time!'})
             try:
                 hall = attrs.get('hall')
-                hall = MovieSession.objects.filter(hall=hall)
-                dates = create_dates(attrs, hall)
+                sessions_in_hall = MovieSession.objects.filter(hall=hall)
+                dates = create_dates(attrs, sessions_in_hall)
             except serializers.ValidationError:
                 raise serializers.ValidationError({'movie_sessions_error': 'There is movie no this time in this hall!'})
             start, end = dates.pop(0)

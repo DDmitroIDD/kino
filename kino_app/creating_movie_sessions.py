@@ -4,8 +4,6 @@ from datetime import datetime, timedelta
 from django.core.exceptions import ValidationError
 from django.db.models import Q
 
-# from kino_app.models import MovieSession
-
 
 def create_dates(data, hall):
     start_date = data.get('start_datetime', False)
@@ -20,6 +18,7 @@ def create_dates(data, hall):
 
     for start, end in dates:
         if hall and hall.filter(Q(
-                start_datetime__range=(start, end)) | Q(end_datetime__range=(start, end))):
+                start_datetime__range=(start, end)) | Q(end_datetime__range=(start, end)) |
+                                Q(start_datetime__lte=start, end_datetime__gte=end)):
             raise ValidationError({'movie_sessions_error': 'There is movie no this time in this hall!'})
     return dates
