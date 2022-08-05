@@ -50,47 +50,6 @@ class MovieSession(models.Model):
             return super(MovieSession, self).save(**kwargs)
         return super(MovieSession, self).save(**kwargs)
 
-        #     try:
-        #         hall = MovieSession.objects.filter(hall_id=self.hall.id)
-        #         dates = create_dates(self, hall)
-        #     except ValidationError:
-        #         raise ValidationError({'movie_sessions_error': 'There is movie no this time in this hall!'})
-        #     for start, end in dates:
-        #         movie = MovieSession(hall_id=self.hall.id, movie=self.movie, qyt=self.qyt, price=self.price,
-        #                              start_datetime=start, end_datetime=end, slug=self.slug,
-        #                              description=self.description, image=self.image)
-        #         tags = (movie.tag.add(t) for t in self.tag)
-        #         movie.save()
-        #     # movies = (MovieSession(hall_id=self.hall.id, movie=self.movie, qyt=self.qyt, price=self.price,
-        #     #                        start_datetime=start, end_datetime=end, slug=self.slug,
-        #     #                        description=self.description, image=self.image)
-        #     #           for start, end in dates)
-        #     # new_movies = MovieSession.objects.bulk_create(movies)
-        #     # unpack = [new_movies]
-        #     #
-        #     # return new_movies
-        # elif self.id:
-        #     if tickets := Ticket.objects.filter(movie_id=self.id):
-        #         raise ValidationError({'movie_sessions_error': 'There is tickets no this session. '
-        #                                                        'You can`t changing this movie!'})
-        #     sessions = MovieSession.objects.filter(movie=self.movie)
-        #     mov_for_upd = []
-        #     for session in sessions:
-        #         if tickets := Ticket.objects.filter(movie_id=session.id):
-        #             continue
-        #         session.movie = self.movie
-        #         session.qyt = self.qyt
-        #         session.image = self.image
-        #         session.description = self.description
-        #         session.slug = self.slug
-        #         session.price = self.price
-        #         session.tag.add(self.tag)
-        #         mov_for_upd.append(session)
-        #     return MovieSession.objects.bulk_update(mov_for_upd, ["movie", "qyt", "image", "description",
-        #                                                           "slug", "price"])
-        #
-        # return super(MovieSession, self).save(**kwargs)
-
 
 class Ticket(models.Model):
     customer = models.ForeignKey(Customer, on_delete=models.CASCADE, related_name='customer_tickets')
