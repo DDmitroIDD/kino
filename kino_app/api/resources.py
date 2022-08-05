@@ -55,30 +55,6 @@ class CustomerModelViewSet(ModelViewSet):
         return super().get_serializer_context()
 
 
-# class CustomGetToken(ObtainAuthToken):
-#
-#     def post(self, request, *args, **kwargs):
-#         serializer = self.serializer_class(data=request.data, context={'request': request})
-#         serializer.is_valid(raise_exception=True)
-#         user = serializer.validated_data['user']
-#         token, created = Token.objects.get_or_create(user=user)
-#         if created:
-#             token.created += timedelta(minutes=10)
-#             token.save()
-#         return Response({
-#             'token': token.key,
-#             'user_id': user.id,
-#             'time_to_live_seconds': (token.created - timezone.now()).seconds
-#                          })
-
-
-# class ApiLogoutView(APIView):
-#     def post(self, request, *args, **kwargs):
-#         token: Token = request.auth
-#         token.delete()
-#         return Response()
-
-
 class CustomPagination(PageNumberPagination):
     page_size = 8
     page_size_query_param = 'page_size'
@@ -103,15 +79,15 @@ class CinemaHallModelViewSet(ModelViewSet):
         serializer.save()
 
 
-class MovieForUpdateView(ListAPIView):
+class AllSeancesOfThisMovie(ListAPIView):
     queryset = MovieSession.objects.filter(end_datetime__gte=timezone.now())
-    permission_classes = (IsAdminUser,)
+    permission_classes = (AllowAny,)
     serializer_class = MovieSessionSerializer
     pagination_class = CustomPagination
     lookup_field = 'slug'
 
     def get_queryset(self):
-        queryset = super(MovieForUpdateView, self).get_queryset()
+        queryset = super(AllSeancesOfThisMovie, self).get_queryset()
         slug = self.kwargs.get('slug', False)
         queryset = queryset.filter(slug=slug)
         qyt = queryset[0].hall.hall_size
@@ -140,10 +116,6 @@ class MovieSessionModelViewSet(ModelViewSet):
             self.request.data.update(json_data)
         return super(MovieSessionModelViewSet, self).create(request, *args, **kwargs)
 
-    # def update(self, request, *args, **kwargs):
-    #     movie =
-    #     return super().update(request, *args, **kwargs)
-
     def get_serializer(self, *args, **kwargs):
         if kwargs.get('partial', False):
             movie = args[0]
@@ -154,65 +126,24 @@ class MovieSessionModelViewSet(ModelViewSet):
             movies_in_this_hall = MovieSession.objects.filter(hall=hall).exclude(id=movie.id)
             start = kwargs['data'].get('start_datetime', False)
             end = kwargs['data'].get('end_datetime', False)
+            start_date = datetime.strptime(start, '%Y-%m-%dT%H:%M')
+            end_date = datetime.strptime(end, '%Y-%m-%dT%H:%M')
+            if start_date > end_date:
+                raise serializers.ValidationError('Your start time starting after end time!')
+            if start_date.date() != end_date.date():
+                raise serializers.ValidationError('Dates can`t be difference!')
             if movies_in_this_hall.filter(Q(
-                    start_datetime__range=(start, end)) | Q(end_datetime__range=(start, end)) |
-                                          Q(start_datetime__lte=start, end_datetime__gte=end)):
+                    start_datetime__range=(start_date, end_date)) | Q(end_datetime__range=(start_date, end_date)) |
+                                          Q(start_datetime__lte=start_date, end_datetime__gte=end_date)):
                 raise serializers.ValidationError("There is movie no this time in this hall!")
         return super(MovieSessionModelViewSet, self).get_serializer(*args, **kwargs)
-
-    #     try:
-    #         datas = []
-    #         hall_name = request.data.get('hall')
-    #         hall = MovieSession.objects.filter(hall__hall_name=hall_name)
-    #         dates = create_dates(request.data, hall)
-    #     except ValidationError:
-    #         raise serializers.ValidationError({'movie_sessions_error': 'There is movie no this time in this hall!'})
-    #
-    #     start, end = dates.pop(0)
-    #     request.data['start_datetime'] = datetime.strftime(start, '%Y-%m-%dT%H:%M')
-    #     request.data['end_datetime'] = datetime.strftime(end, '%Y-%m-%dT%H:%M')
-    #     serializer = self.get_serializer(data=request.data)
-    #     serializer.is_valid(raise_exception=True)
-    #     self.perform_create(serializer)
-    #     headers = self.get_success_headers(serializer.data)
-    #     return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
-
-    # def perform_create(self, serializer):
-    #
-    #     try:
-    #         hall_id = serializer.validated_data.get('hall').id
-    #         hall = MovieSession.objects.filter(hall_id=hall_id)
-    #         dates = create_dates(serializer.validated_data, hall)
-    #     except ValueError:
-    #         raise serializers.ValidationError({'movie_sessions_error': 'There is movie no this time in this hall!'})
-
-    # data = serializer.validated_data
-    # movie = data.get('movie', False)
-    # price = data.get('price', False)
-    # qyt = data.get('hall', False).hall_size
-    # slug = '_'.join(movie.split())
-    # description = data.get('description', False)
-    # tags = data.get('tag', False)
-
-    # for start, end in dates:
-    #     serializer.validated_data['start_datetime'] = start
-    #     serializer.validated_data['end_datetime'] = end
-    #     serializer.save()
-    #     # movie = MovieSession(hall_id=hall_id, movie=movie, qyt=qyt, price=price,
-    #     #                      start_datetime=start, end_datetime=end, slug=slug,
-    #     #                      description=description)
-
-    # movies = (MovieSession(hall_id=hall_id, movie=movie, qyt=qyt, price=price,
-    #                        start_datetime=start, end_datetime=end, slug=slug,
-    #                        description=description, tag=tags) for start, end in dates)
-    #
-    # MovieSession.objects.bulk_create(movies)
 
 
 class TicketModelViewSet(ModelViewSet):
     queryset = Ticket.objects.all()
     serializer_class = TicketSerializer
     permission_classes = (IsAuthenticated,)
+    pagination_class = CustomPagination
 
     def get_permissions(self):
         if self.request.method == 'POST':
@@ -222,7 +153,7 @@ class TicketModelViewSet(ModelViewSet):
     def get_queryset(self):
         queryset = super(TicketModelViewSet, self).get_queryset()
         user = self.request.user
-        if not user.is_admin:
+        if not user.is_staff:
             queryset = queryset.filter(customer=user)
         return queryset
 

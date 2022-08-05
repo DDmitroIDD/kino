@@ -35,25 +35,6 @@ class CustomerSerializer(serializers.ModelSerializer):
         read_only_fields = ("id", "money_spent", "is_staff",)
 
 
-class TicketSerializer(serializers.ModelSerializer):
-    qt = serializers.IntegerField(required=True)
-    spent = serializers.SerializerMethodField()
-    user = serializers.SlugRelatedField(slug_field="username", queryset=Customer.objects.all(), required=False)
-
-    class Meta:
-        model = Ticket
-        fields = ("id", "customer", "movie", "qt", "spent", "user")
-        read_only_fields = ("id", "spent", "user",)
-        lookup_field = 'slug'
-        extra_kwargs = {
-            'url': {'lookup_field': 'slug'}
-        }
-
-    @staticmethod
-    def get_spent(obj):
-        return obj.customer.money_spent
-
-
 class MovieSessionSerializer(TaggitSerializer, serializers.ModelSerializer):
     tag = TagListSerializerField()
     hall = serializers.SlugRelatedField(slug_field="hall_name", queryset=CinemaHall.objects.all())
@@ -99,6 +80,26 @@ class MovieSessionSerializer(TaggitSerializer, serializers.ModelSerializer):
                     movie.tag.add(t)
 
         return attrs
+
+
+class TicketSerializer(serializers.ModelSerializer):
+    qt = serializers.IntegerField(required=True)
+    spent = serializers.SerializerMethodField()
+    user = serializers.SlugRelatedField(slug_field="username", queryset=Customer.objects.all(), required=False)
+    movie = MovieSessionSerializer()
+
+    class Meta:
+        model = Ticket
+        fields = ("id", "customer", "movie", "qt", "spent", "user")
+        read_only_fields = ("id", "spent", "user",)
+        lookup_field = 'slug'
+        extra_kwargs = {
+            'url': {'lookup_field': 'slug'}
+        }
+
+    @staticmethod
+    def get_spent(obj):
+        return obj.customer.money_spent
 
 
 class CinemaHallSerializer(serializers.ModelSerializer):
