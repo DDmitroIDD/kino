@@ -2,7 +2,8 @@ from django.urls import path
 from rest_framework import routers
 
 from kino_app.api.resources import CustomerModelViewSet, CinemaHallModelViewSet, MovieSessionModelViewSet, \
-    ProfileView, TagView, LastFiveMoviesView, TagDetailView, TicketModelViewSet, AllSeancesOfThisMovie
+    ProfileView, TagView, LastFiveMoviesView, TagDetailView, TicketModelViewSet, AllSeancesOfThisMovie, \
+    CustomerTicketsView
 
 router = routers.SimpleRouter()
 router.register(r'registration', CustomerModelViewSet)
@@ -10,6 +11,7 @@ router.register(r'users', CustomerModelViewSet)
 router.register(r'cinema', CinemaHallModelViewSet)
 router.register(r'movie', MovieSessionModelViewSet)
 router.register(r'ticket', TicketModelViewSet)
+router.register(r'orders', CustomerTicketsView)
 
 urlpatterns = [
     path("tags/<slug:tag_slug>/", TagDetailView.as_view()),
