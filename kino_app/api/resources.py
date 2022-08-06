@@ -19,7 +19,7 @@ from rest_framework.viewsets import ModelViewSet
 from taggit.models import Tag
 
 from kino_app.api.serializers import CustomerSerializer, CinemaHallSerializer, MovieSessionSerializer, TicketSerializer, \
-    ContactSerailizer, TagSerializer
+    ContactSerailizer, TagSerializer, CustomerTicketsSerializer
 # from kino_app.creating_movie_sessions import creating
 from kino_app.creating_movie_sessions import create_dates
 from kino_app.models import Customer, CinemaHall, MovieSession, Ticket
@@ -142,20 +142,9 @@ class MovieSessionModelViewSet(ModelViewSet):
 class TicketModelViewSet(ModelViewSet):
     queryset = Ticket.objects.all()
     serializer_class = TicketSerializer
-    permission_classes = (IsAuthenticated,)
+    permission_classes = (IsAuthNotAdmin,)
     pagination_class = CustomPagination
-
-    def get_permissions(self):
-        if self.request.method == 'POST':
-            self.permission_classes = (IsAuthNotAdmin,)
-        return super(TicketModelViewSet, self).get_permissions()
-
-    def get_queryset(self):
-        queryset = super(TicketModelViewSet, self).get_queryset()
-        user = self.request.user
-        if not user.is_staff:
-            queryset = queryset.filter(customer=user)
-        return queryset
+    http_method_names = ('post', )
 
     def perform_create(self, serializer):
         data = serializer.validated_data
@@ -169,6 +158,21 @@ class TicketModelViewSet(ModelViewSet):
         movie.save()
         user.save()
         serializer.save()
+
+
+class CustomerTicketsView(ModelViewSet):
+    queryset = Ticket.objects.all()
+    serializer_class = CustomerTicketsSerializer
+    permission_classes = (IsAuthenticated,)
+    pagination_class = CustomPagination
+    http_method_names = ('get',)
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        user = self.request.user
+        if not user.is_staff:
+            queryset = queryset.filter(customer=user)
+        return queryset
 
 
 class TagDetailView(ListAPIView):
